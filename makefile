@@ -4,8 +4,8 @@
 
 TARGET		= app
 
-CC 		= /usr/bin/arm-none-eabi-gcc
-AR 		= /usr/bin/arm-none-eabi-ar
+CC 			= /usr/bin/arm-none-eabi-gcc
+AR 			= /usr/bin/arm-none-eabi-ar
 OBJCOPY 	= /usr/bin/arm-none-eabi-objcopy
 OBJDUMP 	= /usr/bin/arm-none-eabi-objdump
 SIZE 		= /usr/bin/arm-none-eabi-size
@@ -98,6 +98,8 @@ SOURCES 	+= $(STARTUP)
 
 # -----------------------------------------------------------------------------
 # BUILD
+DIRS=build
+
 CFLAGS  = -Wall -g -std=c99 -Os
 CFLAGS += $(addprefix -D ,$(DEFINES))
 CFLAGS += -Werror-implicit-function-declaration
@@ -117,6 +119,7 @@ BUILD_PRINT = @echo "CC $<"
 .PHONY: all
 
 all: libstm32f7.a libfreertos.a build/$(TARGET).elf
+$(shell mkdir -p $(DIRS))
 
 libstm32f7.a: $(devOBJS)
 	$(BUILD_PRINT)
