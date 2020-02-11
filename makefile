@@ -1,68 +1,86 @@
 ###############################################################################
-# Makefile STM32F746-DISCO
+# Makefile LINUX-PC
 ###############################################################################
 
-TARGET		= app
+#PLATFORM = LINUX
+PLATFORM := $(STM32)
 
-CC 			= /usr/bin/arm-none-eabi-gcc
-AR 			= /usr/bin/arm-none-eabi-ar
-OBJCOPY 	= /usr/bin/arm-none-eabi-objcopy
-OBJDUMP 	= /usr/bin/arm-none-eabi-objdump
-SIZE 		= /usr/bin/arm-none-eabi-size
 
-BOARD		= ./board/stm32f746-disco
-STARTUP 	= $(BOARD)/stm32f746xx_startup.s
-LDSCRIPT	= $(BOARD)/stm32f746xx_flash.ld
+ifeq ($(PLATFORM), LINUX)
+	CC		= clang
+	BOARD	= ./board/linux-pc
+	DEFINES += _POSIX_C_SOURCE=199309L
+else
+	CC 		 = /usr/bin/arm-none-eabi-gcc
+	AR 		 = /usr/bin/arm-none-eabi-ar
+	OBJCOPY  = /usr/bin/arm-none-eabi-objcopy
+	OBJDUMP  = /usr/bin/arm-none-eabi-objdump
+	SIZE 	 = /usr/bin/arm-none-eabi-size
+	
+	BOARD	 = ./board/stm32f746-disco
+	STARTUP  = $(BOARD)/stm32f746xx_startup.s
+	LDSCRIPT = $(BOARD)/stm32f746xx_flash.ld
+	
+	DEFINES	 = STM32F746xx USE_HAL_DRIVER
+endif
 
-DEFINES		= STM32F746xx USE_HAL_DRIVER
-
-# -----------------------------------------------------------------------------
-# PERIPHERAL LIBRARY
-INCLUDES  = $(BOARD) $(BOARD)/bsp/cmsis
-INCLUDES += $(BOARD)/bsp/hal $(BOARD)/bsp/hal/inc
-
-devSOURCES  = $(wildcard $(BOARD)/bsp/cmsis/*.c)
-devSOURCES += $(wildcard $(BOARD)/bsp/hal/src/*.c)
-
-devOBJS = $(devSOURCES:.c=.o)
-
-# -----------------------------------------------------------------------------
-# FreeRTOS LIBRARY
-INCLUDES += $(BOARD)/freertos
-INCLUDES += $(BOARD)/freertos/Source/include
-INCLUDES += $(BOARD)/freertos/Source/CMSIS_RTOS
-INCLUDES += $(BOARD)/freertos/Source/portable/GCC/ARM_CM7/r0p1
-INCLUDES += $(BOARD)/freertos/Source
-
-osSOURCES += $(wildcard $(BOARD)/freertos/*.c)
-osSOURCES += $(wildcard $(BOARD)/freertos/Source/*.c)
-osSOURCES += $(wildcard $(BOARD)/freertos/Source/CMSIS_RTOS/*.c)
-osSOURCES += $(wildcard $(BOARD)/freertos/Source/portable/MemMang/heap_4.c)
-osSOURCES += $(wildcard $(BOARD)/freertos/Source/portable/GCC/ARM_CM7/r0p1/*.c)
-
-osOBJS = $(osSOURCES:.c=.o)
+TARGET	= app
 
 # -----------------------------------------------------------------------------
 # BOARD UTILITIES
-INCLUDES += $(BOARD)/bsp $(BOARD)/bsp/peripheral/
-INCLUDES += $(BOARD)/bsp/drivers/touchscreen/
-INCLUDES += $(BOARD)/bsp/drivers/lcd/
-INCLUDES += $(BOARD)/lvport/
+# -----------------------------------------------------------------------------
+ifeq ($(PLATFORM), LINUX)
+	INCLUDES += $(BOARD)
+	INCLUDES += $(BOARD)/osapi/ $(BOARD)/bsp/ $(BOARD)/lvport/
+	
+	SOURCES  += $(wildcard $(BOARD)/*.c)
+	SOURCES  += $(wildcard $(BOARD)/osapi/*.c)
+	SOURCES  += $(wildcard $(BOARD)/bsp/*.c)
+	SOURCES  += $(wildcard $(BOARD)/lvport/*.c)
+else
+	INCLUDES  = $(BOARD) $(BOARD)/bsp/cmsis
+	INCLUDES += $(BOARD)/bsp/hal $(BOARD)/bsp/hal/inc
+	
+	devSOURCES  = $(wildcard $(BOARD)/bsp/cmsis/*.c)
+	devSOURCES += $(wildcard $(BOARD)/bsp/hal/src/*.c)
+	devOBJS 	= $(devSOURCES:.c=.o)
+	
+	INCLUDES += $(BOARD)/freertos
+	INCLUDES += $(BOARD)/freertos/Source/include
+	INCLUDES += $(BOARD)/freertos/Source/CMSIS_RTOS
+	INCLUDES += $(BOARD)/freertos/Source/portable/GCC/ARM_CM7/r0p1
+	INCLUDES += $(BOARD)/freertos/Source
+	
+	osSOURCES += $(wildcard $(BOARD)/freertos/*.c)
+	osSOURCES += $(wildcard $(BOARD)/freertos/Source/*.c)
+	osSOURCES += $(wildcard $(BOARD)/freertos/Source/CMSIS_RTOS/*.c)
+	osSOURCES += $(wildcard $(BOARD)/freertos/Source/portable/MemMang/heap_4.c)
+	osSOURCES += $(wildcard $(BOARD)/freertos/Source/portable/GCC/ARM_CM7/r0p1/*.c)
+	
+	osOBJS = $(osSOURCES:.c=.o)
+	
+	INCLUDES += $(BOARD)/bsp $(BOARD)/bsp/peripheral/
+	INCLUDES += $(BOARD)/bsp/drivers/touchscreen/
+	INCLUDES += $(BOARD)/bsp/drivers/lcd/
+	INCLUDES += $(BOARD)/lvport/
+	
+	SOURCES  += $(wildcard $(BOARD)/bsp/peripheral/*.c)
+	SOURCES  += $(wildcard $(BOARD)/bsp/drivers/touchscreen/*.c)
+	SOURCES  += $(wildcard $(BOARD)/bsp/drivers/lcd/*.c)
+	SOURCES  += $(wildcard $(BOARD)/lvport/*.c)
+	
+	SOURCES  += $(wildcard $(BOARD)/*.c)
+	
+	INCLUDES += $(BOARD)/osapi
+	SOURCES  += $(wildcard $(BOARD)/osapi/*.c)
+endif
 
-SOURCES  += $(wildcard $(BOARD)/bsp/peripheral/*.c)
-SOURCES  += $(wildcard $(BOARD)/bsp/drivers/touchscreen/*.c)
-SOURCES  += $(wildcard $(BOARD)/bsp/drivers/lcd/*.c)
-SOURCES  += $(wildcard $(BOARD)/lvport/*.c)
-
-SOURCES  += $(wildcard $(BOARD)/*.c)
-
-INCLUDES += $(BOARD)/osapi
-SOURCES  += $(wildcard $(BOARD)/osapi/*.c)
 
 # -----------------------------------------------------------------------------
 # APPLICATION
+# -----------------------------------------------------------------------------
 INCLUDES	+= ./utilities/littlegl/
-INCLUDES	+= ./application/ ./application/objects/ ./application/terminal/
+INCLUDES	+= ./application ./application/objects ./application/terminal
 INCLUDES	+= ./application/gui/
 
 INCLUDES	+= ./utilities/littlegl/lvgl/lv_core/
@@ -86,18 +104,40 @@ SOURCES 	+= $(shell find ./utilities/littlegl/lvgl/lv_misc/ -name *.c)
 SOURCES 	+= $(shell find ./utilities/littlegl/lvgl/lv_objx/ -name *.c)
 SOURCES 	+= $(shell find ./utilities/littlegl/lvgl/lv_themes/ -name *.c)
 
-
 INCLUDES	+= ./application/gui/apps/settings/
 SOURCES 	+= $(shell find ./application/gui/apps/settings/ -name *.c)
 
 INCLUDES	+= ./application/gui/apps/snake/
 SOURCES 	+= $(shell find ./application/gui/apps/snake/ -name *.c)
 
-# Add assembly startup template & config files
-SOURCES 	+= $(STARTUP)
-
 # -----------------------------------------------------------------------------
 # BUILD
+# -----------------------------------------------------------------------------
+ifeq ($(PLATFORM), LINUX)
+CFLAGS  = -Wall -g -std=c99 -Os -pthread
+CFLAGS += $(addprefix -D ,$(DEFINES))
+CFLAGS += -Werror-implicit-function-declaration 
+CFLAGS +=  $(addprefix -I ,$(INCLUDES))
+
+BUILD_PRINT = @echo "CC $<"
+	
+.SILENT:
+
+.PHONY: all
+
+all: build/$(TARGET)
+
+build/$(TARGET): $(SOURCES)
+	$(CC) $(CFLAGS) $^ -o $@ -lX11
+	$(BUILD_PRINT)
+
+clean:
+	find . -name "*.o" -type f -delete
+	rm build/*
+
+run:
+	./build/app
+else
 DIRS=build
 
 CFLAGS  = -Wall -g -std=c99 -Os
@@ -109,11 +149,10 @@ CFLAGS += -ffunction-sections -fdata-sections
 CFLAGS += -Wl,--gc-sections -Wl,-Map=build/$(TARGET).map -Wstrict-aliasing
 CFLAGS +=  $(addprefix -I ,$(INCLUDES))
 
-# Append board specified libraries
 CLIBS 	=  -L ./build -lstm32f7 -lfreertos
 
 BUILD_PRINT = @echo "CC $<"
-
+	
 .SILENT:
 
 .PHONY: all
@@ -147,8 +186,8 @@ clean:
 
 run : build/$(TARGET).bin
 	st-flash --reset write build/$(TARGET).bin 0x8000000
+endif
 
 ###############################################################################
 # END OF FILE
 ###############################################################################
-
